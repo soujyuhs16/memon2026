@@ -97,18 +97,15 @@ class Predictor:
             rule_result = check_rules(text)
             rule_hits = rule_result['hits']
             rule_score = rule_result['score']
-            # 融合预测
+            # 融合预测（merge_predictions 内部处理 rule_override 逻辑）
             final_prob = merge_predictions(prob, rule_score, rule_override=rule_override)
         else:
             rule_hits = []
             rule_score = 0.0
             final_prob = prob
         
-        # 判定（如果开启rule_override且规则命中，直接判定为有毒）
-        if rule_override and use_rules and len(rule_hits) > 0:
-            pred = 1
-        else:
-            pred = 1 if final_prob >= threshold else 0
+        # 判定
+        pred = 1 if final_prob >= threshold else 0
         
         return {
             'text': text,
@@ -175,17 +172,15 @@ class Predictor:
                     rule_result = check_rules(text)
                     rule_hits = rule_result['hits']
                     rule_score = rule_result['score']
+                    # 融合预测（merge_predictions 内部处理 rule_override 逻辑）
                     final_prob = merge_predictions(prob, rule_score, rule_override=rule_override)
                 else:
                     rule_hits = []
                     rule_score = 0.0
                     final_prob = prob
                 
-                # 判定（如果开启rule_override且规则命中，直接判定为有毒）
-                if rule_override and use_rules and len(rule_hits) > 0:
-                    pred = 1
-                else:
-                    pred = 1 if final_prob >= threshold else 0
+                # 判定
+                pred = 1 if final_prob >= threshold else 0
                 
                 results.append({
                     'text': text,
