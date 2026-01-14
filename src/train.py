@@ -196,8 +196,8 @@ def main():
     
     # 兼容不同版本的 transformers 参数名称
     # Compatible with different transformers versions for evaluation strategy parameter
-    # transformers < 4.19.0 使用 'evaluation_strategy'
-    # transformers >= 4.19.0 使用 'eval_strategy'
+    # 旧版本使用 'evaluation_strategy'，新版本使用 'eval_strategy'
+    # Older versions use 'evaluation_strategy', newer versions use 'eval_strategy'
     training_args_kwargs = {
         'output_dir': model_output_dir,
         'num_train_epochs': args.epochs,
@@ -219,15 +219,20 @@ def main():
     # Check which parameter name is supported by TrainingArguments
     sig = inspect.signature(TrainingArguments.__init__)
     if 'evaluation_strategy' in sig.parameters:
-        # 旧版本 transformers (< 4.19.0)
+        # 旧版本 transformers
+        # Older transformers versions
         training_args_kwargs['evaluation_strategy'] = "epoch"
     elif 'eval_strategy' in sig.parameters:
-        # 新版本 transformers (>= 4.19.0)
+        # 新版本 transformers
+        # Newer transformers versions
         training_args_kwargs['eval_strategy'] = "epoch"
     else:
-        # 如果两个参数都不支持，回退到 evaluation_strategy（向后兼容）
-        # Fallback to evaluation_strategy for backward compatibility
-        training_args_kwargs['evaluation_strategy'] = "epoch"
+        # 如果两个参数都不支持，报错提示用户
+        # If neither parameter is supported, raise an informative error
+        raise ValueError(
+            "TrainingArguments does not support 'evaluation_strategy' or 'eval_strategy' parameter. "
+            "Please upgrade your transformers library: pip install --upgrade transformers"
+        )
     
     training_args = TrainingArguments(**training_args_kwargs)
     
