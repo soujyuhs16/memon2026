@@ -97,7 +97,7 @@ class Predictor:
             rule_result = check_rules(text)
             rule_hits = rule_result['hits']
             rule_score = rule_result['score']
-            # 融合预测（merge_predictions 内部处理 rule_override 逻辑）
+            # 融合预测（通过 merge_predictions 应用 rule_override 逻辑）
             final_prob = merge_predictions(prob, rule_score, rule_override=rule_override)
         else:
             rule_hits = []
@@ -172,7 +172,7 @@ class Predictor:
                     rule_result = check_rules(text)
                     rule_hits = rule_result['hits']
                     rule_score = rule_result['score']
-                    # 融合预测（merge_predictions 内部处理 rule_override 逻辑）
+                    # 融合预测（通过 merge_predictions 应用 rule_override 逻辑）
                     final_prob = merge_predictions(prob, rule_score, rule_override=rule_override)
                 else:
                     rule_hits = []

@@ -402,7 +402,7 @@ python -c "from src.predict import load_predictor; p=load_predictor('outputs/mod
   - `text` (str): 输入文本
   - `threshold` (float): 判定阈值，默认 0.5
   - `use_rules` (bool): 是否使用规则融合，默认 True
-  - `rule_override` (bool): 规则命中时是否直接判定为有毒，默认 False
+  - `rule_override` (bool): 规则命中时是否强制判定为有毒，默认 False。当设置为 True 时，如果任何规则命中（rule_score > 0），则 `final_prob` 强制设为 1.0，完全覆盖模型预测
 - **返回**: 字典，包含 `model_prob`、`rule_hits`、`rule_score`、`final_prob`、`pred`、`threshold`
 
 #### `predictor.predict_batch(texts, threshold=0.5, use_rules=True, rule_override=False, batch_size=32)`
@@ -413,7 +413,7 @@ python -c "from src.predict import load_predictor; p=load_predictor('outputs/mod
   - `texts` (List[str]): 文本列表
   - `threshold` (float): 判定阈值，默认 0.5
   - `use_rules` (bool): 是否使用规则融合，默认 True
-  - `rule_override` (bool): 规则命中时是否直接判定为有毒，默认 False
+  - `rule_override` (bool): 规则命中时是否强制判定为有毒，默认 False。当设置为 True 时，如果任何规则命中（rule_score > 0），则 `final_prob` 强制设为 1.0，完全覆盖模型预测
   - `batch_size` (int): 批处理大小，默认 32
 - **返回**: 字典列表
 
