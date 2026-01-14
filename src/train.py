@@ -5,6 +5,7 @@ Training script for toxic comment classification
 import argparse
 import os
 import json
+import inspect
 import pandas as pd
 import numpy as np
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support, roc_auc_score
@@ -192,23 +193,43 @@ def main():
     print("=" * 80)
     
     model_output_dir = os.path.join(args.output_dir, 'model')
-    training_args = TrainingArguments(
-        output_dir=model_output_dir,
-        num_train_epochs=args.epochs,
-        per_device_train_batch_size=args.batch_size,
-        per_device_eval_batch_size=args.eval_batch_size,
-        learning_rate=args.lr,
-        weight_decay=0.01,
-        evaluation_strategy="epoch",
-        save_strategy="epoch",
-        load_best_model_at_end=True,
-        metric_for_best_model="f1",
-        seed=args.seed,
-        logging_dir=os.path.join(args.output_dir, 'logs'),
-        logging_steps=50,
-        save_total_limit=2,
-        report_to="none"  # 不使用wandb等
-    )
+    
+    # 兼容不同版本的 transformers 参数名称
+    # Compatible with different transformers versions for evaluation strategy parameter
+    # transformers < 4.19.0 使用 'evaluation_strategy'
+    # transformers >= 4.19.0 使用 'eval_strategy'
+    training_args_kwargs = {
+        'output_dir': model_output_dir,
+        'num_train_epochs': args.epochs,
+        'per_device_train_batch_size': args.batch_size,
+        'per_device_eval_batch_size': args.eval_batch_size,
+        'learning_rate': args.lr,
+        'weight_decay': 0.01,
+        'save_strategy': "epoch",
+        'load_best_model_at_end': True,
+        'metric_for_best_model': "f1",
+        'seed': args.seed,
+        'logging_dir': os.path.join(args.output_dir, 'logs'),
+        'logging_steps': 50,
+        'save_total_limit': 2,
+        'report_to': "none"  # 不使用wandb等
+    }
+    
+    # 检查 TrainingArguments 支持哪个参数名
+    # Check which parameter name is supported by TrainingArguments
+    sig = inspect.signature(TrainingArguments.__init__)
+    if 'evaluation_strategy' in sig.parameters:
+        # 旧版本 transformers (< 4.19.0)
+        training_args_kwargs['evaluation_strategy'] = "epoch"
+    elif 'eval_strategy' in sig.parameters:
+        # 新版本 transformers (>= 4.19.0)
+        training_args_kwargs['eval_strategy'] = "epoch"
+    else:
+        # 如果两个参数都不支持，回退到 evaluation_strategy（向后兼容）
+        # Fallback to evaluation_strategy for backward compatibility
+        training_args_kwargs['evaluation_strategy'] = "epoch"
+    
+    training_args = TrainingArguments(**training_args_kwargs)
     
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
     
