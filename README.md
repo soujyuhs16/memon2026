@@ -411,6 +411,20 @@ pip install --upgrade transformers
 
 系统会自动检测当前版本并使用正确的参数名，无需手动配置。
 
+**Q: 训练时出现 `RuntimeError: Found dtype Long but expected Float` 错误？**
+
+A: 这是因为使用 `num_labels=1` 配置时，模型内部使用 `BCEWithLogitsLoss`，要求标签为 float 类型。
+
+**解决方案**（已在最新版本中修复）：
+- 标签列已自动转换为 float32 类型
+- 标签列名统一为 `labels`（而非 `label`）
+- 训练脚本会在 tokenization 后打印标签 dtype 进行检查
+
+如果仍遇到此问题，请确保：
+1. 使用最新版本的代码
+2. 检查数据集中的标签列是否为数值类型（0/1）
+3. 查看训练日志中的 "[Sanity Check]" 部分，确认 labels dtype 为 float32
+
 ## 📈 性能指标
 
 训练完成后，查看评估指标：

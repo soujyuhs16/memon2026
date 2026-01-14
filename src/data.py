@@ -84,11 +84,15 @@ def prepare_dataset_for_training(df: pd.DataFrame) -> Dict:
         df: 包含 content 和 toxic 列的数据框
         
     Returns:
-        Dict: {'text': list, 'label': list}
+        Dict: {'text': list, 'labels': list (float32)}
     """
+    # 验证 toxic 列的值
+    if not df['toxic'].isin([0, 1]).all():
+        raise ValueError("toxic 列应只包含 0 或 1 的值")
+    
     return {
         'text': df['content'].tolist(),
-        'label': df['toxic'].tolist()
+        'labels': df['toxic'].astype('float32').tolist()
     }
 
 
