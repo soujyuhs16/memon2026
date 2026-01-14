@@ -84,11 +84,11 @@ def prepare_dataset_for_training(df: pd.DataFrame) -> Dict:
         df: 包含 content 和 toxic 列的数据框
         
     Returns:
-        Dict: {'text': list, 'label': list}
+        Dict: {'text': list, 'labels': list (float32)}
     """
     return {
         'text': df['content'].tolist(),
-        'label': df['toxic'].tolist()
+        'labels': df['toxic'].astype('float32').tolist()
     }
 
 

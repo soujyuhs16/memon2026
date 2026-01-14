@@ -17,7 +17,7 @@ from transformers import (
     Trainer,
     DataCollatorWithPadding
 )
-from datasets import Dataset
+from datasets import Dataset, Value
 
 from data import load_toxicn_data, split_data
 from rules import check_rules, merge_predictions
@@ -143,6 +143,16 @@ def main():
         'label': test_df['toxic'].tolist()
     })
     
+    # 重命名列: label -> labels (Trainer 期望的列名)
+    train_dataset = train_dataset.rename_column('label', 'labels')
+    dev_dataset = dev_dataset.rename_column('label', 'labels')
+    test_dataset = test_dataset.rename_column('label', 'labels')
+    
+    # 转换 labels 为 float32 (BCEWithLogitsLoss 要求)
+    train_dataset = train_dataset.cast_column('labels', Value('float32'))
+    dev_dataset = dev_dataset.cast_column('labels', Value('float32'))
+    test_dataset = test_dataset.cast_column('labels', Value('float32'))
+    
     print(f"训练集: {len(train_dataset)} 样本")
     print(f"验证集: {len(dev_dataset)} 样本")
     print(f"测试集: {len(test_dataset)} 样本")
@@ -185,6 +195,14 @@ def main():
     )
     
     print("Tokenization 完成")
+    
+    # 数据类型检查和日志
+    print("\n[Sanity Check] 标签数据类型检查:")
+    print(f"  训练集 labels dtype: {tokenized_train.features['labels'].dtype}")
+    print(f"  验证集 labels dtype: {tokenized_dev.features['labels'].dtype}")
+    print(f"  测试集 labels dtype: {tokenized_test.features['labels'].dtype}")
+    if len(tokenized_train) > 0:
+        print(f"  训练集前3个标签示例: {tokenized_train['labels'][:3]}")
     print()
     
     # 5. 设置训练参数
