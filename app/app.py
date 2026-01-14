@@ -10,7 +10,7 @@ import sys
 # 添加 src 到路径
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from src.predict import load_model
+from src.predict import load_predictor
 
 
 # 配置
@@ -62,7 +62,7 @@ def load_classifier():
         st.stop()
     
     with st.spinner('加载模型中...'):
-        return load_model(MODEL_PATH)
+        return load_predictor(MODEL_PATH)
 
 
 def main():
@@ -125,7 +125,7 @@ def main():
         
         if predict_button and text_input.strip():
             with st.spinner('预测中...'):
-                result = classifier.predict_single(
+                result = classifier.predict_one(
                     text_input,
                     threshold=threshold,
                     use_rules=True
