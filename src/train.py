@@ -50,6 +50,30 @@ def compute_metrics(eval_pred):
     }
 
 
+def prepare_dataset_with_float_labels(df: pd.DataFrame, text_col: str = 'content', 
+                                       label_col: str = 'toxic') -> Dataset:
+    """
+    创建数据集并将标签转换为 float32
+    
+    Args:
+        df: 包含文本和标签的 DataFrame
+        text_col: 文本列名
+        label_col: 标签列名
+        
+    Returns:
+        Dataset: 包含 'text' 和 'labels' (float32) 列的数据集
+    """
+    dataset = Dataset.from_dict({
+        'text': df[text_col].tolist(),
+        'label': df[label_col].tolist()
+    })
+    # 重命名列: label -> labels (Trainer 期望的列名)
+    dataset = dataset.rename_column('label', 'labels')
+    # 转换 labels 为 float32 (BCEWithLogitsLoss 要求)
+    dataset = dataset.cast_column('labels', Value('float32'))
+    return dataset
+
+
 def tokenize_function(examples, tokenizer, max_length):
     """Tokenization function"""
     return tokenizer(
@@ -130,28 +154,9 @@ def main():
     print("步骤 2: 准备数据集")
     print("=" * 80)
     
-    train_dataset = Dataset.from_dict({
-        'text': train_df['content'].tolist(),
-        'label': train_df['toxic'].tolist()
-    })
-    dev_dataset = Dataset.from_dict({
-        'text': dev_df['content'].tolist(),
-        'label': dev_df['toxic'].tolist()
-    })
-    test_dataset = Dataset.from_dict({
-        'text': test_df['content'].tolist(),
-        'label': test_df['toxic'].tolist()
-    })
-    
-    # 重命名列: label -> labels (Trainer 期望的列名)
-    train_dataset = train_dataset.rename_column('label', 'labels')
-    dev_dataset = dev_dataset.rename_column('label', 'labels')
-    test_dataset = test_dataset.rename_column('label', 'labels')
-    
-    # 转换 labels 为 float32 (BCEWithLogitsLoss 要求)
-    train_dataset = train_dataset.cast_column('labels', Value('float32'))
-    dev_dataset = dev_dataset.cast_column('labels', Value('float32'))
-    test_dataset = test_dataset.cast_column('labels', Value('float32'))
+    train_dataset = prepare_dataset_with_float_labels(train_df)
+    dev_dataset = prepare_dataset_with_float_labels(dev_df)
+    test_dataset = prepare_dataset_with_float_labels(test_df)
     
     print(f"训练集: {len(train_dataset)} 样本")
     print(f"验证集: {len(dev_dataset)} 样本")
