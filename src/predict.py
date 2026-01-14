@@ -104,7 +104,7 @@ class Predictor:
             rule_score = 0.0
             final_prob = prob
         
-        # 判定
+        # 判定 (Classification)
         pred = 1 if final_prob >= threshold else 0
         
         return {
@@ -179,7 +179,7 @@ class Predictor:
                     rule_score = 0.0
                     final_prob = prob
                 
-                # 判定
+                # 判定 (Classification)
                 pred = 1 if final_prob >= threshold else 0
                 
                 results.append({
