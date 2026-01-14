@@ -397,6 +397,20 @@ python src/train.py
 ls outputs/model/  # 检查模型文件
 ```
 
+**Q: TrainingArguments 参数错误 (evaluation_strategy vs eval_strategy)？**
+
+A: 本系统已内置兼容逻辑，支持 `transformers` 新旧版本：
+- **旧版本** (< 4.19.0): 使用 `evaluation_strategy` 参数
+- **新版本** (>= 4.19.0): 使用 `eval_strategy` 参数
+
+如果仍遇到问题，建议升级 transformers：
+
+```bash
+pip install --upgrade transformers
+```
+
+系统会自动检测当前版本并使用正确的参数名，无需手动配置。
+
 ## 📈 性能指标
 
 训练完成后，查看评估指标：
