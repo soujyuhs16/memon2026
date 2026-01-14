@@ -14,7 +14,7 @@ import sys
 # 添加 src 到路径
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from src.predict import load_model
+from src.predict import load_predictor
 
 
 # 配置
@@ -34,7 +34,7 @@ def get_classifier():
                 f"模型未找到: {MODEL_PATH}\n"
                 "请先运行训练脚本: python src/train.py"
             )
-        classifier = load_model(MODEL_PATH)
+        classifier = load_predictor(MODEL_PATH)
     return classifier
 
 
@@ -120,7 +120,7 @@ def predict(request: PredictRequest):
     """
     try:
         clf = get_classifier()
-        result = clf.predict_single(
+        result = clf.predict_one(
             request.text,
             threshold=request.threshold,
             use_rules=True

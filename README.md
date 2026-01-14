@@ -339,6 +339,102 @@ with open('test_comments.csv', 'rb') as f:
 - 命中 1 个规则: `score = 0.6`
 - 命中 2+ 个规则: `score = 1.0`
 
+## 🔍 本地快速推理验证
+
+在训练完成后，可以通过以下命令快速验证推理功能：
+
+### Python 接口验证
+
+```python
+# 导入推理接口
+from src.predict import load_predictor
+
+# 加载模型
+predictor = load_predictor('outputs/model')
+
+# 单条预测
+result = predictor.predict_one('加vx领资料，低价代刷', threshold=0.5)
+print(result)
+# 输出示例:
+# {
+#   'text': '加vx领资料，低价代刷',
+#   'model_prob': 0.856,
+#   'rule_hits': ['WeChat', 'Price'],
+#   'rule_score': 1.0,
+#   'final_prob': 1.0,
+#   'pred': 1,
+#   'threshold': 0.5
+# }
+
+# 批量预测
+texts = ['这个产品很好用', '加微信领优惠', '请私信我']
+results = predictor.predict_batch(texts, threshold=0.5)
+for r in results:
+    print(f"{r['text']}: pred={r['pred']}, final_prob={r['final_prob']:.3f}")
+```
+
+### 命令行快速测试
+
+```bash
+# 单条预测测试
+python -c "from src.predict import load_predictor; p=load_predictor('outputs/model'); print(p.predict_one('加vx领资料，低价代刷', threshold=0.5))"
+
+# 批量预测测试
+python -c "from src.predict import load_predictor; p=load_predictor('outputs/model'); texts=['正常评论', '加微信VX123']; results=p.predict_batch(texts); [print(r) for r in results]"
+```
+
+### 推理接口说明
+
+#### `load_predictor(model_dir, device=None)`
+
+加载预测器实例。
+
+- **参数**:
+  - `model_dir` (str): 模型目录路径（如 `'outputs/model'`）
+  - `device` (str, optional): 设备选择（`'cuda'`、`'cpu'` 或 `None` 自动检测）
+- **返回**: `Predictor` 实例
+
+#### `predictor.predict_one(text, threshold=0.5, use_rules=True, rule_override=False)`
+
+单条文本预测。
+
+- **参数**:
+  - `text` (str): 输入文本
+  - `threshold` (float): 判定阈值，默认 0.5
+  - `use_rules` (bool): 是否使用规则融合，默认 True
+  - `rule_override` (bool): 规则命中时是否强制判定为有毒，默认 False。当设置为 True 时，如果任何规则命中（rule_score > 0），则 `final_prob` 强制设为 1.0，完全覆盖模型预测
+- **返回**: 字典，包含 `model_prob`、`rule_hits`、`rule_score`、`final_prob`、`pred`、`threshold`
+
+#### `predictor.predict_batch(texts, threshold=0.5, use_rules=True, rule_override=False, batch_size=32)`
+
+批量文本预测。
+
+- **参数**:
+  - `texts` (List[str]): 文本列表
+  - `threshold` (float): 判定阈值，默认 0.5
+  - `use_rules` (bool): 是否使用规则融合，默认 True
+  - `rule_override` (bool): 规则命中时是否强制判定为有毒，默认 False。当设置为 True 时，如果任何规则命中（rule_score > 0），则 `final_prob` 强制设为 1.0，完全覆盖模型预测
+  - `batch_size` (int): 批处理大小，默认 32
+- **返回**: 字典列表
+
+### 向后兼容
+
+为保持兼容性，以下旧接口仍然可用：
+
+```python
+# 旧接口（仍可用）
+from src.predict import load_model, ToxicClassifier
+
+classifier = load_model('outputs/model')
+result = classifier.predict_single('文本')  # 旧方法名
+
+# 新接口（推荐）
+from src.predict import load_predictor, Predictor
+
+predictor = load_predictor('outputs/model')
+result = predictor.predict_one('文本')  # 新方法名
+```
+
 ## 📊 输出格式
 
 ### 测试集预测文件 (`outputs/test_predictions.csv`)
