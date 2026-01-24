@@ -36,11 +36,22 @@
 
 ### 系统特性
 
-- ✅ 二分类任务（toxic 标签，sigmoid 单输出）
+- ✅ 二分类任务（广义有害内容检测，包含辱骂/仇恨/引流广告）
 - ✅ 规则融合：模型预测 + 广告检测规则
 - ✅ 可配置阈值（默认 0.5）
-- ✅ 输出包含 `model_prob`, `rule_hits`, `rule_score`, `final_prob`, `pred`
+- ✅ 输出包含 `model_prob`, `rule_hits`, `rule_score`, `final_prob`, `pred`, `category_hint`
 - ✅ 支持批量预测和CSV文件处理
+- ✅ 类别提示 (`category_hint`)：自动标注有害内容的可能类型（广告/引流、辱骂/仇恨/攻击、模型判定）
+
+### 类别提示 (category_hint)
+
+系统提供启发式的类别提示，帮助理解有害内容的可能类型：
+
+1. **广告/引流**: 命中规则检测（URL、微信、QQ、手机号、价格优惠等）
+2. **辱骂/仇恨/攻击**: 命中辱骂/仇恨关键词词表（但未命中规则）
+3. **模型判定（未命中规则/词表）**: 仅通过模型判断为有害，未触发规则或关键词
+
+**注意**: `category_hint` 基于启发式规则和轻量词表，仅供参考，不代表精确分类。
 
 ## 🏗️ 项目结构
 
@@ -220,7 +231,8 @@ curl -X POST "http://localhost:8000/predict" \
   "rule_score": 0.0,
   "final_prob": 0.023,
   "pred": 0,
-  "threshold": 0.5
+  "threshold": 0.5,
+  "category_hint": ""
 }
 ```
 
@@ -245,7 +257,34 @@ curl -X POST "http://localhost:8000/predict" \
   "rule_score": 1.0,
   "final_prob": 1.0,
   "pred": 1,
-  "threshold": 0.5
+  "threshold": 0.5,
+  "category_hint": "广告/引流"
+}
+```
+
+**辱骂检测示例:**
+
+```bash
+curl -X POST "http://localhost:8000/predict" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "你这个傻逼，真是垃圾",
+    "threshold": 0.5
+  }'
+```
+
+**响应:**
+
+```json
+{
+  "text": "你这个傻逼，真是垃圾",
+  "model_prob": 0.956,
+  "rule_hits": [],
+  "rule_score": 0.0,
+  "final_prob": 0.956,
+  "pred": 1,
+  "threshold": 0.5,
+  "category_hint": "辱骂/仇恨/攻击"
 }
 ```
 
@@ -402,8 +441,8 @@ python -c "from src.predict import load_predictor; p=load_predictor('outputs/mod
   - `text` (str): 输入文本
   - `threshold` (float): 判定阈值，默认 0.5
   - `use_rules` (bool): 是否使用规则融合，默认 True
-  - `rule_override` (bool): 规则命中时是否强制判定为有毒，默认 False。当设置为 True 时，如果任何规则命中（rule_score > 0），则 `final_prob` 强制设为 1.0，完全覆盖模型预测
-- **返回**: 字典，包含 `model_prob`、`rule_hits`、`rule_score`、`final_prob`、`pred`、`threshold`
+  - `rule_override` (bool): 规则命中时是否强制判定为有害，默认 False。当设置为 True 时，如果任何规则命中（rule_score > 0），则 `final_prob` 强制设为 1.0，完全覆盖模型预测
+- **返回**: 字典，包含 `model_prob`、`rule_hits`、`rule_score`、`final_prob`、`pred`、`threshold`、`category_hint`
 
 #### `predictor.predict_batch(texts, threshold=0.5, use_rules=True, rule_override=False, batch_size=32)`
 
@@ -413,9 +452,9 @@ python -c "from src.predict import load_predictor; p=load_predictor('outputs/mod
   - `texts` (List[str]): 文本列表
   - `threshold` (float): 判定阈值，默认 0.5
   - `use_rules` (bool): 是否使用规则融合，默认 True
-  - `rule_override` (bool): 规则命中时是否强制判定为有毒，默认 False。当设置为 True 时，如果任何规则命中（rule_score > 0），则 `final_prob` 强制设为 1.0，完全覆盖模型预测
+  - `rule_override` (bool): 规则命中时是否强制判定为有害，默认 False。当设置为 True 时，如果任何规则命中（rule_score > 0），则 `final_prob` 强制设为 1.0，完全覆盖模型预测
   - `batch_size` (int): 批处理大小，默认 32
-- **返回**: 字典列表
+- **返回**: 字典列表，每个字典包含 `model_prob`、`rule_hits`、`rule_score`、`final_prob`、`pred`、`threshold`、`category_hint`
 
 ### 向后兼容
 
@@ -437,17 +476,24 @@ result = predictor.predict_one('文本')  # 新方法名
 
 ## 📊 输出格式
 
+### 预测结果字段说明
+
+所有预测接口（单条/批量/CSV）都会返回以下字段：
+
+| 字段名 | 类型 | 说明 |
+|--------|------|------|
+| `text`/`content` | str | 原始文本 |
+| `model_prob` | float | 模型预测概率 (0~1) |
+| `rule_hits` | list/str | 命中的规则列表（CSV 中为逗号分隔字符串） |
+| `rule_score` | float | 规则得分 (0~1) |
+| `final_prob` | float | 融合后最终概率 (0~1) |
+| `pred` | int | 预测标签 (0=安全, 1=有害) |
+| `threshold` | float | 使用的判定阈值 |
+| `category_hint` | str | 类别提示（仅 pred=1 时有值）:<br>- "广告/引流"<br>- "辱骂/仇恨/攻击"<br>- "模型判定（未命中规则/词表）" |
+
 ### 测试集预测文件 (`outputs/test_predictions.csv`)
 
-| 列名 | 说明 |
-|------|------|
-| `content` | 原始文本 |
-| `label` | 真实标签 (0/1) |
-| `model_prob` | 模型预测概率 |
-| `rule_score` | 规则得分 |
-| `final_prob` | 融合后最终概率 |
-| `pred` | 预测标签 (0/1) |
-| `rule_hits` | 命中的规则列表 (逗号分隔) |
+训练后生成的测试集预测 CSV 文件包含原始数据列和所有预测字段。
 
 ## 🛠️ 开发和调试
 

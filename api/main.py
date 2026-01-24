@@ -41,7 +41,7 @@ def get_classifier():
 # FastAPI app
 app = FastAPI(
     title="中文评论审核 API",
-    description="基于 Transformer 的中文有毒评论分类服务（ToxiCN）",
+    description="基于 Transformer 的中文有害内容分类服务（辱骂/仇恨/引流广告）",
     version="1.0.0"
 )
 
@@ -68,6 +68,7 @@ class PredictResponse(BaseModel):
     final_prob: float
     pred: int
     threshold: float
+    category_hint: str
     
     class Config:
         json_schema_extra = {
@@ -78,7 +79,8 @@ class PredictResponse(BaseModel):
                 "rule_score": 0.0,
                 "final_prob": 0.05,
                 "pred": 0,
-                "threshold": 0.5
+                "threshold": 0.5,
+                "category_hint": ""
             }
         }
 
@@ -178,6 +180,7 @@ async def batch_predict(
         output_df['rule_score'] = result_df['rule_score']
         output_df['final_prob'] = result_df['final_prob']
         output_df['pred'] = result_df['pred']
+        output_df['category_hint'] = result_df['category_hint']
         
         # 转换为CSV
         output_buffer = io.StringIO()

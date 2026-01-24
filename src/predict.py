@@ -4,10 +4,90 @@ Inference and prediction utilities
 """
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from typing import List, Dict, Union, Optional
+from typing import List, Dict, Union, Optional, Set
 import os
 
 from .rules import check_rules, merge_predictions
+
+
+# 加载辱骂/仇恨/攻击关键词
+def load_abuse_keywords() -> Set[str]:
+    """
+    加载辱骂/仇恨/攻击类关键词（预转换为小写）
+    Load abuse/hate/attack keywords from file (pre-converted to lowercase)
+    
+    Returns:
+        Set[str]: 关键词集合（小写） (Set of keywords in lowercase)
+    """
+    keywords = set()
+    abuse_file = os.path.join(os.path.dirname(__file__), 'resources', 'abuse_words.txt')
+    
+    if os.path.exists(abuse_file):
+        with open(abuse_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                # 跳过空行和注释
+                if line and not line.startswith('#'):
+                    # 预转换为小写，提高性能
+                    keywords.add(line.lower())
+    
+    return keywords
+
+
+# 全局加载关键词（避免重复读取，已预转换为小写）
+ABUSE_KEYWORDS = load_abuse_keywords()
+
+
+def check_abuse_keywords(text: str) -> bool:
+    """
+    检查文本是否包含辱骂/仇恨/攻击关键词
+    Check if text contains abuse/hate/attack keywords
+    
+    Args:
+        text: 输入文本 (Input text)
+        
+    Returns:
+        bool: 是否命中关键词 (Whether keywords are matched)
+    """
+    if not ABUSE_KEYWORDS:
+        return False
+    
+    text_lower = text.lower()
+    # ABUSE_KEYWORDS 已预转换为小写，无需再次转换
+    for keyword in ABUSE_KEYWORDS:
+        if keyword in text_lower:
+            return True
+    
+    return False
+
+
+def determine_category_hint(text: str, rule_hits: List[str], pred: int) -> str:
+    """
+    确定内容类别提示
+    Determine category hint for the content
+    
+    Args:
+        text: 输入文本 (Input text)
+        rule_hits: 命中的规则列表 (List of matched rules)
+        pred: 预测标签 (Prediction label, 0 or 1)
+        
+    Returns:
+        str: 类别提示 (Category hint)
+    """
+    # 如果预测为安全内容（pred=0），不需要类别提示
+    if pred == 0:
+        return ""
+    
+    # 优先：规则命中表示广告/引流
+    if rule_hits:
+        return "广告/引流"
+    
+    # 其次：关键词命中表示辱骂/仇恨/攻击
+    if check_abuse_keywords(text):
+        return "辱骂/仇恨/攻击"
+    
+    # 否则：仅模型判定
+    return "模型判定（未命中规则/词表）"
 
 
 class Predictor:
@@ -73,7 +153,8 @@ class Predictor:
                 'rule_score': float,   # 规则得分 (0~1)
                 'final_prob': float,   # 融合后最终概率
                 'pred': int,           # 预测标签 (0=正常, 1=有毒)
-                'threshold': float     # 使用的阈值
+                'threshold': float,    # 使用的阈值
+                'category_hint': str   # 类别提示 (广告/引流、辱骂/仇恨/攻击、模型判定)
             }
         """
         # 模型预测
@@ -107,6 +188,9 @@ class Predictor:
         # 判定 (Classification)
         pred = 1 if final_prob >= threshold else 0
         
+        # 确定类别提示
+        category_hint = determine_category_hint(text, rule_hits, pred)
+        
         return {
             'text': text,
             'model_prob': prob,
@@ -114,7 +198,8 @@ class Predictor:
             'rule_score': rule_score,
             'final_prob': final_prob,
             'pred': pred,
-            'threshold': threshold
+            'threshold': threshold,
+            'category_hint': category_hint
         }
     
     def predict_batch(self, 
@@ -182,6 +267,9 @@ class Predictor:
                 # 判定 (Classification)
                 pred = 1 if final_prob >= threshold else 0
                 
+                # 确定类别提示
+                category_hint = determine_category_hint(text, rule_hits, pred)
+                
                 results.append({
                     'text': text,
                     'model_prob': prob,
@@ -189,7 +277,8 @@ class Predictor:
                     'rule_score': rule_score,
                     'final_prob': final_prob,
                     'pred': pred,
-                    'threshold': threshold
+                    'threshold': threshold,
+                    'category_hint': category_hint
                 })
         
         return results
