@@ -41,7 +41,7 @@ def get_classifier():
 # FastAPI app
 app = FastAPI(
     title="中文评论审核 API",
-    description="基于 Transformer 的中文有毒评论分类服务（ToxiCN）",
+    description="基于 Transformer 的中文有害内容分类服务（辱骂/仇恨/引流广告）",
     version="1.0.0"
 )
 
