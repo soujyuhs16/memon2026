@@ -24,12 +24,12 @@ def test_check_abuse_keywords():
     from src.predict import check_abuse_keywords
     
     # Test positive cases
-    assert check_abuse_keywords("你这个傻逼") == True, "Should detect abuse"
-    assert check_abuse_keywords("真是垃圾") == True, "Should detect abuse"
+    assert check_abuse_keywords("你这个傻逼"), "Should detect abuse"
+    assert check_abuse_keywords("真是垃圾"), "Should detect abuse"
     
     # Test negative cases  
-    assert check_abuse_keywords("这个产品很好用") == False, "Should not detect abuse"
-    assert check_abuse_keywords("加微信VX123") == False, "Should not detect abuse"
+    assert not check_abuse_keywords("这个产品很好用"), "Should not detect abuse"
+    assert not check_abuse_keywords("加微信VX123"), "Should not detect abuse"
     
     print("✅ test_check_abuse_keywords passed")
 

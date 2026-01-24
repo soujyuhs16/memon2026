@@ -13,11 +13,11 @@ from .rules import check_rules, merge_predictions
 # 加载辱骂/仇恨/攻击关键词
 def load_abuse_keywords() -> Set[str]:
     """
-    加载辱骂/仇恨/攻击类关键词
-    Load abuse/hate/attack keywords from file
+    加载辱骂/仇恨/攻击类关键词（预转换为小写）
+    Load abuse/hate/attack keywords from file (pre-converted to lowercase)
     
     Returns:
-        Set[str]: 关键词集合 (Set of keywords)
+        Set[str]: 关键词集合（小写） (Set of keywords in lowercase)
     """
     keywords = set()
     abuse_file = os.path.join(os.path.dirname(__file__), 'resources', 'abuse_words.txt')
@@ -28,12 +28,13 @@ def load_abuse_keywords() -> Set[str]:
                 line = line.strip()
                 # 跳过空行和注释
                 if line and not line.startswith('#'):
-                    keywords.add(line)
+                    # 预转换为小写，提高性能
+                    keywords.add(line.lower())
     
     return keywords
 
 
-# 全局加载关键词（避免重复读取）
+# 全局加载关键词（避免重复读取，已预转换为小写）
 ABUSE_KEYWORDS = load_abuse_keywords()
 
 
@@ -52,8 +53,9 @@ def check_abuse_keywords(text: str) -> bool:
         return False
     
     text_lower = text.lower()
+    # ABUSE_KEYWORDS 已预转换为小写，无需再次转换
     for keyword in ABUSE_KEYWORDS:
-        if keyword.lower() in text_lower:
+        if keyword in text_lower:
             return True
     
     return False
