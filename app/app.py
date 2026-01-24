@@ -72,7 +72,7 @@ def main():
     
     # 警告信息
     st.warning(
-        "⚠️ **重要提示**: 本系统用于检测有毒/广告评论，数据包含敏感内容，"
+        "⚠️ **重要提示**: 本系统用于检测有害内容（辱骂/仇恨/引流广告），数据包含敏感内容，"
         "仅供科研和学术用途使用。请勿用于商业目的。"
     )
     
@@ -92,7 +92,7 @@ def main():
         max_value=1.0,
         value=DEFAULT_THRESHOLD,
         step=0.05,
-        help="概率高于此阈值将被判定为有毒"
+        help="概率高于此阈值将被判定为有害内容"
     )
     
     st.sidebar.markdown("---")
@@ -100,8 +100,9 @@ def main():
         "**模型信息**\n\n"
         f"- 模型路径: `{MODEL_PATH}`\n"
         f"- 基线模型: hfl/chinese-roberta-wwm-ext\n"
-        f"- 任务: ToxiCN toxic 二分类\n"
-        f"- 规则融合: 已启用"
+        f"- 任务: 广义有害内容二分类\n"
+        f"- 规则融合: 已启用\n"
+        f"- 分类: 辱骂/仇恨/引流广告"
     )
     
     # 主界面选项卡
@@ -158,12 +159,15 @@ def main():
             # 判定结果
             if result['pred'] == 1:
                 st.markdown(
-                    '<div class="toxic-badge">🚫 有毒/广告</div>',
+                    '<div class="toxic-badge">🚫 有害内容（辱骂/仇恨/引流广告）</div>',
                     unsafe_allow_html=True
                 )
+                # 显示类别提示
+                if result.get('category_hint'):
+                    st.info(f"**可能类别**: {result['category_hint']}")
             else:
                 st.markdown(
-                    '<div class="safe-badge">✅ 正常</div>',
+                    '<div class="safe-badge">✅ 安全内容</div>',
                     unsafe_allow_html=True
                 )
             
@@ -243,6 +247,7 @@ def main():
                     output_df['rule_score'] = result_df['rule_score']
                     output_df['final_prob'] = result_df['final_prob']
                     output_df['pred'] = result_df['pred']
+                    output_df['category_hint'] = result_df['category_hint']
                     
                     st.success("✅ 预测完成!")
                     
@@ -256,12 +261,12 @@ def main():
                         st.metric("总样本数", len(output_df))
                     
                     with col2:
-                        toxic_count = (output_df['pred'] == 1).sum()
-                        st.metric("有毒/广告", toxic_count)
+                        harmful_count = (output_df['pred'] == 1).sum()
+                        st.metric("有害内容", harmful_count)
                     
                     with col3:
                         safe_count = (output_df['pred'] == 0).sum()
-                        st.metric("正常", safe_count)
+                        st.metric("安全内容", safe_count)
                     
                     # 预览结果
                     st.markdown("---")
