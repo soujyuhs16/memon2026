@@ -19,7 +19,7 @@ from src.predict import load_predictor
 
 # 配置
 MODEL_PATH = os.environ.get('MODEL_PATH', 'outputs/model')
-DEFAULT_THRESHOLD = 0.5
+DEFAULT_THRESHOLD = None  # None = use calibrated threshold from model
 
 # 全局模型实例（延迟加载）
 classifier = None
@@ -116,7 +116,7 @@ def predict(request: PredictRequest):
     单条文本预测
     
     - **text**: 输入文本
-    - **threshold**: 判定阈值 (可选，默认0.5)
+    - **threshold**: 判定阈值 (可选，None=使用校准阈值，默认0.5)
     
     返回模型概率、规则命中、最终概率和预测标签
     """
@@ -136,14 +136,14 @@ def predict(request: PredictRequest):
 @app.post("/batch_predict")
 async def batch_predict(
     file: UploadFile = File(...),
-    threshold: float = DEFAULT_THRESHOLD,
+    threshold: Optional[float] = DEFAULT_THRESHOLD,
     text_column: str = 'content'
 ):
     """
     批量CSV文件预测
     
     - **file**: CSV文件（必须包含文本列）
-    - **threshold**: 判定阈值 (可选，默认0.5)
+    - **threshold**: 判定阈值 (可选，None=使用校准阈值，默认0.5)
     - **text_column**: 文本列名 (可选，默认'content')
     
     返回带预测结果的CSV文件

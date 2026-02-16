@@ -15,7 +15,6 @@ from src.predict import load_predictor
 
 # 配置
 MODEL_PATH = os.environ.get('MODEL_PATH', 'outputs/model')
-DEFAULT_THRESHOLD = 0.5
 
 
 # 页面配置
@@ -86,13 +85,18 @@ def main():
     
     # 侧边栏配置
     st.sidebar.header("⚙️ 配置")
+    
+    # 显示默认阈值（来自模型校准）
+    default_threshold = classifier.default_threshold
+    st.sidebar.info(f"📊 模型校准阈值: {default_threshold:.3f}")
+    
     threshold = st.sidebar.slider(
         "判定阈值",
         min_value=0.0,
         max_value=1.0,
-        value=DEFAULT_THRESHOLD,
+        value=default_threshold,
         step=0.05,
-        help="概率高于此阈值将被判定为有害内容"
+        help="概率高于此阈值将被判定为有害内容（默认使用模型校准阈值）"
     )
     
     st.sidebar.markdown("---")
