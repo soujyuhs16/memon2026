@@ -35,16 +35,14 @@ GENDER_DISCRIMINATION_KEYWORDS = [
     '骚货', '破鞋', '绿茶婊', '臭三八', '娘炮', '娘们唧唧'
 ]
 
-# 种族歧视关键词
+# 种族歧视关键词（仅包含明显贬义词，移除中性描述词）
 RACE_DISCRIMINATION_KEYWORDS = [
-    '黑鬼', '黑哥哥', '尼哥', '白皮', '黄皮', '猴子', '黑叔叔',
-    '白种人', '黄种人', '黑种人', '黑人', '支那', '小日本'
+    '黑鬼', '尼哥', '支那', '小日本', '鬼子', '棒子', '阿三'
 ]
 
-# 恐同关键词
+# 恐同关键词（仅包含贬义词，移除中性描述词）
 HOMOPHOBIA_KEYWORDS = [
-    '同性恋', '基佬', '搞基', '玻璃', '断背', '娘娘腔', '死基佬',
-    '变态', 'gay', '拉拉', '蕾丝边'
+    '基佬', '死基佬', '搞基', '玻璃', '断背', '娘娘腔', '变态'
 ]
 
 # 辱骂/攻击关键词
@@ -100,21 +98,6 @@ HIGH_CONFIDENCE_KEYWORDS = [
 
 
 # ========== 辅助函数 ==========
-
-def load_abuse_words_from_file() -> Set[str]:
-    """加载 src/resources/abuse_words.txt 中的辱骂词"""
-    abuse_file = os.path.join(
-        os.path.dirname(__file__), '..', 'src', 'resources', 'abuse_words.txt'
-    )
-    keywords = set()
-    if os.path.exists(abuse_file):
-        with open(abuse_file, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#'):
-                    keywords.add(line.lower())
-    return keywords
-
 
 def check_harmful_keywords(text: str, keywords: List[str]) -> List[str]:
     """
@@ -392,7 +375,14 @@ def clean_dataset(
     print("=" * 80)
     print(f"输入样本数:         {stats['input_samples']}")
     print(f"CHSD toxic=0 样本:  {stats['chsd_toxic0_samples']}")
-    print(f"检测到有害:         {stats['harmful_detected']} ({stats['harmful_detected']/stats['chsd_toxic0_samples']*100:.2f}%)")
+    
+    # 避免除以零
+    if stats['chsd_toxic0_samples'] > 0:
+        harmful_pct = stats['harmful_detected'] / stats['chsd_toxic0_samples'] * 100
+        print(f"检测到有害:         {stats['harmful_detected']} ({harmful_pct:.2f}%)")
+    else:
+        print(f"检测到有害:         {stats['harmful_detected']} (N/A)")
+    
     print(f"  - 高置信:         {stats['high_confidence']}")
     print(f"  - 中等置信:       {stats['medium_confidence']}")
     print(f"剔除样本数:         {stats['removed_samples']}")
