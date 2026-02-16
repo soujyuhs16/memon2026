@@ -159,13 +159,22 @@ def tokenize_function(examples, tokenizer, max_length):
 def main():
     parser = argparse.ArgumentParser(description='训练中文有毒评论分类模型')
     
-    # 数据参数
-    parser.add_argument('--csv_path', type=str, default='data/ToxiCN_1.0.csv',
-                        help='ToxiCN 数据集路径')
+    # 数据参数 - 支持两种模式
+    # 模式 1: 单一 CSV 文件（向后兼容）
+    parser.add_argument('--csv_path', type=str, default=None,
+                        help='单一数据集路径（向后兼容，会自动切分）')
     parser.add_argument('--test_size', type=float, default=0.2,
-                        help='测试集比例')
+                        help='测试集比例（仅在使用 --csv_path 时有效）')
     parser.add_argument('--dev_size', type=float, default=0.1,
-                        help='验证集比例（从训练集中切分）')
+                        help='验证集比例（仅在使用 --csv_path 时有效）')
+    
+    # 模式 2: 显式指定 train/dev/test（推荐）
+    parser.add_argument('--train_csv', type=str, default=None,
+                        help='训练集 CSV 路径')
+    parser.add_argument('--dev_csv', type=str, default=None,
+                        help='验证集 CSV 路径')
+    parser.add_argument('--test_csv', type=str, default=None,
+                        help='测试集 CSV 路径')
     
     # 模型参数
     parser.add_argument('--model_name', type=str, 
@@ -202,6 +211,19 @@ def main():
     
     args = parser.parse_args()
     
+    # 验证参数：必须使用模式 1 或模式 2
+    mode1 = args.csv_path is not None
+    mode2 = all([args.train_csv, args.dev_csv, args.test_csv])
+    
+    if not mode1 and not mode2:
+        # 如果都没有提供，使用默认值（向后兼容）
+        args.csv_path = 'data/ToxiCN_1.0.csv'
+        mode1 = True
+        print("⚠️  未指定数据参数，使用默认路径: data/ToxiCN_1.0.csv")
+    
+    if mode1 and mode2:
+        parser.error("不能同时使用 --csv_path 和 --train_csv/--dev_csv/--test_csv")
+    
     # 设置随机种子
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
@@ -218,17 +240,38 @@ def main():
     print("=" * 80)
     print("步骤 1: 加载数据")
     print("=" * 80)
-    df = load_toxicn_data(args.csv_path)
-    print(f"总样本数: {len(df)}")
-    print(f"有毒样本: {df['toxic'].sum()} ({df['toxic'].mean()*100:.2f}%)")
-    print()
     
-    train_df, dev_df, test_df = split_data(
-        df, 
-        test_size=args.test_size,
-        dev_size=args.dev_size,
-        random_state=args.seed
-    )
+    if mode1:
+        # 模式 1: 单一 CSV，自动切分
+        print(f"使用单一 CSV 模式: {args.csv_path}")
+        df = load_toxicn_data(args.csv_path)
+        print(f"总样本数: {len(df)}")
+        print(f"有毒样本: {df['toxic'].sum()} ({df['toxic'].mean()*100:.2f}%)")
+        print()
+        
+        train_df, dev_df, test_df = split_data(
+            df, 
+            test_size=args.test_size,
+            dev_size=args.dev_size,
+            random_state=args.seed
+        )
+    else:
+        # 模式 2: 显式指定 train/dev/test
+        print("使用显式 train/dev/test CSV 模式")
+        print(f"  训练集: {args.train_csv}")
+        print(f"  验证集: {args.dev_csv}")
+        print(f"  测试集: {args.test_csv}")
+        print()
+        
+        train_df = load_toxicn_data(args.train_csv)
+        dev_df = load_toxicn_data(args.dev_csv)
+        test_df = load_toxicn_data(args.test_csv)
+        
+        print(f"数据加载完成:")
+        print(f"  训练集: {len(train_df)} 样本 (toxic={train_df['toxic'].sum()}, {train_df['toxic'].mean()*100:.2f}%)")
+        print(f"  验证集: {len(dev_df)} 样本 (toxic={dev_df['toxic'].sum()}, {dev_df['toxic'].mean()*100:.2f}%)")
+        print(f"  测试集: {len(test_df)} 样本 (toxic={test_df['toxic'].sum()}, {test_df['toxic'].mean()*100:.2f}%)")
+    
     print()
     
     # 2. 转换为 Datasets 格式
@@ -418,7 +461,7 @@ def main():
         print(f"  F1 Score:  {best_metrics['f1']:.4f}")
         
         # 保存阈值到文件
-        threshold_path = os.path.join(args.output_dir, 'threshold.json')
+        threshold_path = os.path.join(args.output_dir, 'best_threshold.json')
         threshold_data = {
             'threshold': best_threshold,
             'strategy': args.threshold_strategy,
