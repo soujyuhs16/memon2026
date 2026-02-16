@@ -4,6 +4,7 @@ Inference and prediction utilities
 """
 import json
 import os
+
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from typing import List, Dict, Union, Optional, Set

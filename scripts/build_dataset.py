@@ -264,7 +264,10 @@ def clean_dataset(
             })
     
     print(f"  命中样本数: {len(harmful_results)}")
-    print(f"  命中比例: {len(harmful_results) / len(chsd_toxic0) * 100:.2f}%")
+    if len(chsd_toxic0) > 0:
+        print(f"  命中比例: {len(harmful_results) / len(chsd_toxic0) * 100:.2f}%")
+    else:
+        print(f"  命中比例: N/A (无样本)")
     print()
     
     # 4. 统计高置信和中等置信命中
