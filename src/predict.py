@@ -130,9 +130,10 @@ class Predictor:
         
         # 尝试加载校准后的阈值
         self.default_threshold = 0.5  # 默认阈值
-        # 假设 threshold.json 和 model 在同一父目录下
-        # 例如 outputs/model/ 和 outputs/threshold.json
-        threshold_file = os.path.join(os.path.dirname(model_path), 'threshold.json')
+        # 假设 threshold.json 在 model_path 的父目录或兄弟目录
+        # 例如 model_path='outputs/model' 或 'outputs/model/' → 'outputs/threshold.json'
+        model_dir = model_path.rstrip('/\\')  # 移除尾部斜杠
+        threshold_file = os.path.join(os.path.dirname(model_dir), 'threshold.json')
         if os.path.exists(threshold_file):
             try:
                 with open(threshold_file, 'r', encoding='utf-8') as f:

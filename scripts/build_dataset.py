@@ -379,7 +379,7 @@ def clean_dataset(
     print(f"输入样本数:         {stats['input_samples']}")
     print(f"CHSD toxic=0 样本:  {stats['chsd_toxic0_samples']}")
     
-    # 避免除以零
+    # 计算检测比例 (避免除以零)
     if stats['chsd_toxic0_samples'] > 0:
         harmful_pct = stats['harmful_detected'] / stats['chsd_toxic0_samples'] * 100
         print(f"检测到有害:         {stats['harmful_detected']} ({harmful_pct:.2f}%)")
