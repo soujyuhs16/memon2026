@@ -1,20 +1,19 @@
 # 中文评论审核系统 (Chinese Comment Moderation System)
 
-基于 Transformer 的中文有毒评论分类系统，面向 ToxiCN 数据集的 `toxic` 二分类任务，集成规则模块用于广告导流检测。
+基于 Transformer 的中文有毒评论分类系统，支持多检测器架构（涉黄、辱骂、歧视、广告诈骗）和规范化数据管线。
 
 ## ⚠️ 重要声明
 
 **本项目仅供科研和学术用途，不得用于商业目的。**
 
-- **数据集**: ToxiCN 1.0
+- **数据集**: ToxiCN 1.0, ZHateBench, chinese-spam-10000
 - **许可**: CC BY-NC-ND 4.0 (非商业-禁止演绎)
-- **引用**: ACL 2023
-- **内容警告**: 数据集包含有毒/攻击性内容，仅用于科研目的
+- **内容警告**: 数据集包含有毒/攻击性/敏感内容，仅用于科研目的
+- **数据存储**: 仅在学校内保存，不公开发布
 
-### ToxiCN 引用
+### 数据集引用 / Citations
 
-如果您使用本系统或 ToxiCN 数据集，请引用：
-
+**ToxiCN:**
 ```bibtex
 @inproceedings{zhou-etal-2023-toxicn,
     title = "{T}oxic{CN}: A Dataset for Detecting Toxic Content in {C}hinese Conversations",
@@ -24,24 +23,35 @@
 }
 ```
 
+**ZHateBench:**
+```
+DOI: 10.5281/zenodo.16812052
+URL: https://doi.org/10.5281/zenodo.16812052
+⚠️ 包含敏感内容，仅供研究使用
+```
+
 ## 📋 项目概述
 
-本系统实现了端到端的中文评论审核流程：
+本系统实现了端到端的中文评论审核流程，支持多检测器架构：
 
-1. **训练模块** (`src/train.py`): 基于 `hfl/chinese-roberta-wwm-ext` 微调二分类模型
-2. **推理模块** (`src/predict.py`): 可复用的预测函数，支持单条/批量推理
-3. **规则模块** (`src/rules.py`): 正则表达式检测广告导流（URL/微信/QQ/手机号等）
-4. **FastAPI 服务** (`api/main.py`): REST API，支持单条和批量CSV预测
-5. **Streamlit 界面** (`app/app.py`): Web UI 管理界面
+1. **数据管线** (`scripts/build_detectors_datasets.py`): 从 ZHateBench 和 HuggingFace 构建检测器数据集
+2. **训练模块** (`src/train.py`): 支持显式 train/dev/test 切分的规范化训练流程
+3. **推理模块** (`src/predict.py`): 可复用的预测函数，支持单条/批量推理
+4. **规则模块** (`src/rules.py`): 正则表达式检测广告导流（URL/微信/QQ/手机号等）
+5. **FastAPI 服务** (`api/main.py`): REST API，支持单条和批量CSV预测
+6. **Streamlit 界面** (`app/app.py`): Web UI 管理界面
 
 ### 系统特性
 
-- ✅ 二分类任务（广义有害内容检测，包含辱骂/仇恨/引流广告）
+- ✅ 多检测器架构 (D1: 涉黄, D2: 辱骂, D3: 歧视, D4: 广告诈骗)
+- ✅ 规范化数据管线（可复现、分层切分、元数据记录）
+- ✅ 显式 train/dev/test 切分（不再依赖训练时随机切分）
 - ✅ 规则融合：模型预测 + 广告检测规则
-- ✅ 可配置阈值（默认 0.5）
+- ✅ 阈值校准：自动在验证集上搜索最优阈值
+- ✅ 可配置阈值（默认 0.5，支持自动校准）
 - ✅ 输出包含 `model_prob`, `rule_hits`, `rule_score`, `final_prob`, `pred`, `category_hint`
 - ✅ 支持批量预测和CSV文件处理
-- ✅ 类别提示 (`category_hint`)：自动标注有害内容的可能类型（广告/引流、辱骂/仇恨/攻击、模型判定）
+- ✅ 类别提示 (`category_hint`)：自动标注有害内容的可能类型
 
 ### 类别提示 (category_hint)
 
@@ -58,35 +68,100 @@
 ```
 .
 ├── api/
-│   └── main.py              # FastAPI 服务
+│   └── main.py                  # FastAPI 服务
 ├── app/
-│   └── app.py               # Streamlit 界面
+│   └── app.py                   # Streamlit 界面
 ├── src/
-│   ├── train.py             # 训练脚本
-│   ├── predict.py           # 推理模块
-│   ├── rules.py             # 规则检测模块
-│   └── data.py              # 数据加载工具
+│   ├── train.py                 # 训练脚本（支持显式 train/dev/test）
+│   ├── predict.py               # 推理模块
+│   ├── rules.py                 # 规则检测模块
+│   ├── data.py                  # 数据加载工具（向后兼容）
+│   └── data/
+│       ├── zhatebench.py        # ZHateBench 加载工具
+│       └── build_splits.py      # 数据切分工具
 ├── scripts/
-│   └── build_dataset.py     # 数据清洗脚本
-├── data/
-│   ├── mixture_toxicn_chsd.csv  # 混合训练数据
-│   └── clean_negatives.csv      # Clean-negative 示例
+│   ├── build_detectors_datasets.py  # 检测器数据集构建脚本（新）
+│   └── build_dataset.py             # 数据清洗脚本（旧）
+├── data/                        # 旧数据（向后兼容）
+│   ├── mixture_toxicn_chsd.csv
+│   └── clean_negatives.csv
+├── data_raw/                    # 原始数据（新）
+│   └── zhatebench/              # ZHateBench 6 个 CSV
+├── data_processed/              # 处理后的数据（新）
+│   ├── d1_porn/                 # D1: 涉黄检测器
+│   ├── d2_abuse/                # D2: 辱骂检测器
+│   ├── d3_bias/                 # D3: 歧视检测器
+│   ├── d4_spam/                 # D4: 广告诈骗检测器
+│   └── manifest.json            # 构建元数据
+├── outputs/                     # 训练输出
+│   └── .gitkeep
 ├── docs/
-│   └── DATA_CLEANING_AND_THRESHOLD_TUNING.md  # 数据清洗和阈值校准文档
-├── outputs/
-│   └── .gitkeep             # 输出目录（模型和结果不提交）
-├── requirements.txt         # Python 依赖
-├── .gitignore               # Git 忽略规则
-└── README.md                # 本文件
+│   └── DATA_CLEANING_AND_THRESHOLD_TUNING.md
+├── DATA_PIPELINE.md             # 数据管线文档（新）
+├── requirements.txt             # Python 依赖
+├── .gitignore                   # Git 忽略规则
+└── README.md                    # 本文件
+```
 ```
 
-## 🆕 新功能：数据清洗与阈值校准
+## 🆕 新功能：多检测器数据管线
 
-为降低误报（如"你好"被判为有害）并改善模型性能，系统新增：
+### 检测器架构
 
-### 数据清洗
+系统支持 4 个专用检测器，每个检测器针对特定类型的有害内容：
 
-自动检测并清洗 CHSD 数据集中标注为 `toxic=0` 但实际包含有害内容的样本：
+| 检测器 | 类型 | 数据来源 |
+|--------|------|---------|
+| **D1** | 涉黄内容 | ZHateBench: SexHarmSet |
+| **D2** | 辱骂内容 | ZHateBench: AbuseSet |
+| **D3** | 歧视内容 | ZHateBench: Bias_region, BiasSet_genden, Bias_race, Bias_occupation |
+| **D4** | 广告诈骗 | HuggingFace: reatiny/chinese-spam-10000 |
+
+### 数据管线快速开始
+
+**1. 准备 ZHateBench 数据：**
+
+```bash
+# 创建目录
+mkdir -p data_raw/zhatebench
+
+# 复制 6 个 CSV 文件到该目录
+cp /path/to/ZHateBench/*.csv data_raw/zhatebench/
+```
+
+**2. 构建检测器数据集：**
+
+```bash
+# 运行数据构建脚本（固定 seed=42 确保可复现）
+python scripts/build_detectors_datasets.py --seed 42
+```
+
+这将生成：
+- `data_processed/d1_porn/{train,dev,test}.csv`
+- `data_processed/d2_abuse/{train,dev,test}.csv`
+- `data_processed/d3_bias/{train,dev,test}.csv`
+- `data_processed/d4_spam/{train,dev,test}.csv`
+- `data_processed/manifest.json`
+
+**3. 训练检测器：**
+
+```bash
+# 训练 D1 (涉黄检测器)
+python src/train.py \
+  --train_csv data_processed/d1_porn/train.csv \
+  --dev_csv data_processed/d1_porn/dev.csv \
+  --test_csv data_processed/d1_porn/test.csv \
+  --output_dir outputs/d1_porn \
+  --tune-threshold
+
+# 训练其他检测器 (D2, D3, D4)...
+```
+
+**📖 详细文档**: [`DATA_PIPELINE.md`](DATA_PIPELINE.md) - 完整的数据管线使用指南
+
+### 传统数据清洗（向后兼容）
+
+系统仍然支持传统的数据清洗流程用于 ToxiCN/CHSD 混合数据：
 
 ```bash
 # 剔除有害样本，提高数据质量
@@ -102,7 +177,7 @@ python scripts/build_dataset.py --mode drop --clean-neg-ratio 0.05
 
 ```bash
 # 训练时启用阈值校准
-python src/train.py --csv_path data/mixture_cleaned.csv --tune-threshold
+python src/train.py --train_csv ... --dev_csv ... --test_csv ... --tune-threshold
 ```
 
 推理时自动使用校准后的阈值，无需手动指定。

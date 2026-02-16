@@ -130,16 +130,23 @@ class Predictor:
         
         # 尝试加载校准后的阈值
         self.default_threshold = 0.5  # 默认阈值
-        # 假设 threshold.json 在 model_path 的父目录或兄弟目录
-        # 例如 model_path='outputs/model' 或 'outputs/model/' → 'outputs/threshold.json'
+        # 检查 best_threshold.json (新) 或 threshold.json (旧，向后兼容)
+        # 例如 model_path='outputs/model' 或 'outputs/model/' → 'outputs/best_threshold.json'
         model_dir = model_path.rstrip('/\\')  # 移除尾部斜杠
-        threshold_file = os.path.join(os.path.dirname(model_dir), 'threshold.json')
+        parent_dir = os.path.dirname(model_dir)
+        
+        # 优先使用新文件名
+        threshold_file = os.path.join(parent_dir, 'best_threshold.json')
+        if not os.path.exists(threshold_file):
+            # 回退到旧文件名（向后兼容）
+            threshold_file = os.path.join(parent_dir, 'threshold.json')
+        
         if os.path.exists(threshold_file):
             try:
                 with open(threshold_file, 'r', encoding='utf-8') as f:
                     threshold_data = json.load(f)
                     self.default_threshold = threshold_data.get('threshold', 0.5)
-                print(f"已加载校准阈值: {self.default_threshold:.3f}")
+                print(f"已加载校准阈值: {self.default_threshold:.3f} (from {os.path.basename(threshold_file)})")
             except Exception as e:
                 print(f"警告: 加载阈值文件失败: {e}，使用默认阈值 0.5")
         

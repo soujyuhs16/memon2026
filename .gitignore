@@ -36,6 +36,15 @@ data/*.json
 data/*.txt
 !data/.gitkeep
 
+# Raw data (不提交原始数据，仅保留结构)
+data_raw/**/*.csv
+!data_raw/**/.gitkeep
+
+# Processed data (不提交处理后数据，仅保留结构)
+data_processed/**/*.csv
+data_processed/**/*.json
+!data_processed/**/.gitkeep
+
 # Model outputs (不提交模型权重)
 outputs/
 !outputs/.gitkeep
