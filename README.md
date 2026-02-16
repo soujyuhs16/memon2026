@@ -66,14 +66,48 @@
 │   ├── predict.py           # 推理模块
 │   ├── rules.py             # 规则检测模块
 │   └── data.py              # 数据加载工具
+├── scripts/
+│   └── build_dataset.py     # 数据清洗脚本
 ├── data/
-│   └── .gitkeep             # 数据目录（CSV文件不提交）
+│   ├── mixture_toxicn_chsd.csv  # 混合训练数据
+│   └── clean_negatives.csv      # Clean-negative 示例
+├── docs/
+│   └── DATA_CLEANING_AND_THRESHOLD_TUNING.md  # 数据清洗和阈值校准文档
 ├── outputs/
 │   └── .gitkeep             # 输出目录（模型和结果不提交）
 ├── requirements.txt         # Python 依赖
 ├── .gitignore               # Git 忽略规则
 └── README.md                # 本文件
 ```
+
+## 🆕 新功能：数据清洗与阈值校准
+
+为降低误报（如"你好"被判为有害）并改善模型性能，系统新增：
+
+### 数据清洗
+
+自动检测并清洗 CHSD 数据集中标注为 `toxic=0` 但实际包含有害内容的样本：
+
+```bash
+# 剔除有害样本，提高数据质量
+python scripts/build_dataset.py --mode drop
+
+# 可选：加入clean-negative高质量负例
+python scripts/build_dataset.py --mode drop --clean-neg-ratio 0.05
+```
+
+### 阈值校准
+
+在验证集上自动搜索最优判定阈值，替代固定的 0.5：
+
+```bash
+# 训练时启用阈值校准
+python src/train.py --csv_path data/mixture_cleaned.csv --tune-threshold
+```
+
+推理时自动使用校准后的阈值，无需手动指定。
+
+**详细文档**: [`docs/DATA_CLEANING_AND_THRESHOLD_TUNING.md`](docs/DATA_CLEANING_AND_THRESHOLD_TUNING.md)
 
 ## 🚀 快速开始
 

@@ -31,6 +31,7 @@ wheels/
 
 # Data files (不提交数据集)
 data/*.csv
+!data/clean_negatives.csv  # 保留 clean-negative 示例文件
 data/*.json
 data/*.txt
 !data/.gitkeep
