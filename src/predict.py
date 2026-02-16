@@ -2,10 +2,11 @@
 推理预测模块
 Inference and prediction utilities
 """
+import json
+import os
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from typing import List, Dict, Union, Optional, Set
-import os
 
 from .rules import check_rules, merge_predictions
 
@@ -126,11 +127,24 @@ class Predictor:
         self.model.to(self.device)
         self.model.eval()
         
+        # 尝试加载校准后的阈值
+        self.default_threshold = 0.5  # 默认阈值
+        threshold_file = os.path.join(model_path, '..', 'threshold.json')
+        if os.path.exists(threshold_file):
+            try:
+                import json
+                with open(threshold_file, 'r', encoding='utf-8') as f:
+                    threshold_data = json.load(f)
+                    self.default_threshold = threshold_data.get('threshold', 0.5)
+                print(f"已加载校准阈值: {self.default_threshold:.3f}")
+            except Exception as e:
+                print(f"警告: 加载阈值文件失败: {e}，使用默认阈值 0.5")
+        
         print("模型加载完成")
     
     def predict_one(self, 
                     text: str, 
-                    threshold: float = 0.5,
+                    threshold: float = None,
                     use_rules: bool = True,
                     rule_override: bool = False,
                     max_length: int = 128) -> Dict:
@@ -140,7 +154,7 @@ class Predictor:
         
         Args:
             text: 输入文本 (Input text)
-            threshold: 判定阈值 (Classification threshold, default 0.5)
+            threshold: 判定阈值 (Classification threshold, None=use default from model)
             use_rules: 是否使用规则融合 (Whether to use rule fusion, default True)
             rule_override: 规则命中时是否直接判定为有毒 (Whether rule hits override model, default False)
             max_length: 最大序列长度 (Max sequence length, default 128)
@@ -157,6 +171,10 @@ class Predictor:
                 'category_hint': str   # 类别提示 (广告/引流、辱骂/仇恨/攻击、模型判定)
             }
         """
+        # 使用校准后的阈值（如果没有指定）
+        if threshold is None:
+            threshold = self.default_threshold
+        
         # 模型预测
         inputs = self.tokenizer(
             text, 
@@ -204,7 +222,7 @@ class Predictor:
     
     def predict_batch(self, 
                       texts: List[str], 
-                      threshold: float = 0.5,
+                      threshold: float = None,
                       use_rules: bool = True,
                       rule_override: bool = False,
                       max_length: int = 128,
@@ -215,7 +233,7 @@ class Predictor:
         
         Args:
             texts: 文本列表 (List of texts)
-            threshold: 判定阈值 (Classification threshold, default 0.5)
+            threshold: 判定阈值 (Classification threshold, None=use default from model)
             use_rules: 是否使用规则融合 (Whether to use rule fusion, default True)
             rule_override: 规则命中时是否直接判定为有毒 (Whether rule hits override model, default False)
             max_length: 最大序列长度 (Max sequence length, default 128)
@@ -224,6 +242,10 @@ class Predictor:
         Returns:
             List[Dict]: 预测结果列表 (List of prediction results)
         """
+        # 使用校准后的阈值（如果没有指定）
+        if threshold is None:
+            threshold = self.default_threshold
+        
         results = []
         
         for i in range(0, len(texts), batch_size):

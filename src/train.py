@@ -50,6 +50,78 @@ def compute_metrics(eval_pred):
     }
 
 
+def tune_threshold(labels: np.ndarray, 
+                   probs: np.ndarray,
+                   strategy: str = 'max_f1',
+                   min_precision: float = 0.8,
+                   threshold_range: tuple = (0.05, 0.95),
+                   step: float = 0.01) -> dict:
+    """
+    阈值校准：基于验证集找到最优阈值
+    Threshold tuning based on dev set predictions
+    
+    Args:
+        labels: 真实标签数组
+        probs: 预测概率数组
+        strategy: 选择策略
+            - 'max_f1': 最大化 F1 分数（默认）
+            - 'max_recall_min_precision': precision >= min_precision 时最大化 recall
+        min_precision: 当 strategy='max_recall_min_precision' 时的最小 precision 要求
+        threshold_range: 阈值搜索范围 (min, max)
+        step: 阈值搜索步长
+        
+    Returns:
+        dict: {
+            'best_threshold': float,
+            'best_metrics': dict,
+            'all_results': list[dict]  # 所有阈值的结果
+        }
+    """
+    labels = labels.flatten()
+    probs = probs.flatten()
+    
+    # 搜索阈值
+    thresholds = np.arange(threshold_range[0], threshold_range[1] + step, step)
+    results = []
+    
+    for threshold in thresholds:
+        preds = (probs >= threshold).astype(int)
+        
+        accuracy = accuracy_score(labels, preds)
+        precision, recall, f1, _ = precision_recall_fscore_support(
+            labels, preds, average='binary', zero_division=0
+        )
+        
+        results.append({
+            'threshold': float(threshold),
+            'accuracy': float(accuracy),
+            'precision': float(precision),
+            'recall': float(recall),
+            'f1': float(f1)
+        })
+    
+    # 根据策略选择最佳阈值
+    if strategy == 'max_f1':
+        # 最大化 F1
+        best_result = max(results, key=lambda x: x['f1'])
+    elif strategy == 'max_recall_min_precision':
+        # precision >= min_precision 时最大化 recall
+        valid_results = [r for r in results if r['precision'] >= min_precision]
+        if not valid_results:
+            print(f"警告: 没有阈值满足 precision >= {min_precision}，使用最大 F1")
+            best_result = max(results, key=lambda x: x['f1'])
+        else:
+            best_result = max(valid_results, key=lambda x: x['recall'])
+    else:
+        raise ValueError(f"不支持的策略: {strategy}")
+    
+    return {
+        'best_threshold': best_result['threshold'],
+        'best_metrics': best_result,
+        'all_results': results
+    }
+
+
 def prepare_dataset_with_float_labels(df: pd.DataFrame, text_col: str = 'content', 
                                        label_col: str = 'toxic') -> Dataset:
     """
@@ -117,6 +189,16 @@ def main():
                         help='随机种子')
     parser.add_argument('--threshold', type=float, default=0.5,
                         help='预测阈值')
+    
+    # 阈值校准参数
+    parser.add_argument('--tune-threshold', action='store_true',
+                        help='训练后进行阈值校准')
+    parser.add_argument('--threshold-strategy', type=str,
+                        choices=['max_f1', 'max_recall_min_precision'],
+                        default='max_f1',
+                        help='阈值选择策略 (默认: max_f1)')
+    parser.add_argument('--min-precision', type=float, default=0.8,
+                        help='max_recall_min_precision 策略的最小 precision 要求')
     
     args = parser.parse_args()
     
@@ -299,6 +381,64 @@ def main():
     with open(dev_metrics_path, 'w', encoding='utf-8') as f:
         json.dump(dev_metrics, f, indent=2, ensure_ascii=False)
     print(f"验证集指标已保存: {dev_metrics_path}")
+    
+    # 7.5. 阈值校准（可选）
+    if args.tune_threshold:
+        print("\n" + "=" * 80)
+        print("步骤 7.5: 阈值校准")
+        print("=" * 80)
+        
+        # 获取验证集预测概率
+        print("在验证集上生成预测...")
+        dev_predictions = trainer.predict(tokenized_dev)
+        dev_logits = dev_predictions.predictions
+        dev_probs = 1 / (1 + np.exp(-dev_logits.flatten()))
+        dev_labels = dev_predictions.label_ids.flatten()
+        
+        print(f"使用策略: {args.threshold_strategy}")
+        if args.threshold_strategy == 'max_recall_min_precision':
+            print(f"最小 precision 要求: {args.min_precision}")
+        
+        # 执行阈值校准
+        tuning_result = tune_threshold(
+            labels=dev_labels,
+            probs=dev_probs,
+            strategy=args.threshold_strategy,
+            min_precision=args.min_precision
+        )
+        
+        best_threshold = tuning_result['best_threshold']
+        best_metrics = tuning_result['best_metrics']
+        
+        print(f"\n最佳阈值: {best_threshold:.3f}")
+        print("最佳阈值下的指标:")
+        print(f"  Accuracy:  {best_metrics['accuracy']:.4f}")
+        print(f"  Precision: {best_metrics['precision']:.4f}")
+        print(f"  Recall:    {best_metrics['recall']:.4f}")
+        print(f"  F1 Score:  {best_metrics['f1']:.4f}")
+        
+        # 保存阈值到文件
+        threshold_path = os.path.join(args.output_dir, 'threshold.json')
+        threshold_data = {
+            'threshold': best_threshold,
+            'strategy': args.threshold_strategy,
+            'metrics': best_metrics,
+            'tuned_on': 'dev_set'
+        }
+        with open(threshold_path, 'w', encoding='utf-8') as f:
+            json.dump(threshold_data, f, indent=2, ensure_ascii=False)
+        print(f"\n阈值已保存到: {threshold_path}")
+        
+        # 保存完整的阈值扫描结果（可选）
+        threshold_scan_path = os.path.join(args.output_dir, 'threshold_scan.json')
+        with open(threshold_scan_path, 'w', encoding='utf-8') as f:
+            json.dump(tuning_result['all_results'], f, indent=2, ensure_ascii=False)
+        print(f"阈值扫描结果已保存到: {threshold_scan_path}")
+        
+        # 更新 args.threshold 为最佳阈值，用于后续测试集预测
+        args.threshold = best_threshold
+        print(f"\n使用最佳阈值 {best_threshold:.3f} 进行后续评估")
+        print()
     
     # 测试集评估
     print("\n测试集评估:")
