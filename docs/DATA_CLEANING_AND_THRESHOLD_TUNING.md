@@ -41,8 +41,10 @@ python src/train.py --csv_path data/mixture_cleaned.csv --tune-threshold --thres
 
 ### 输出文件
 
-- `outputs/threshold.json`: 最佳阈值及指标
+- `outputs/best_threshold.json`: 最佳阈值及指标
 - `outputs/threshold_scan.json`: 全部阈值扫描结果
+
+**注意**: 旧版本使用 `threshold.json`，新版本改为 `best_threshold.json`。推理模块会自动兼容两种文件名。
 
 ## 完整工作流
 
@@ -59,7 +61,7 @@ python -c "from src.predict import load_predictor; p=load_predictor('outputs/mod
 
 ## 推理使用
 
-推理模块会自动加载`outputs/threshold.json`中的校准阈值。
+推理模块会自动加载 `outputs/best_threshold.json` (或 `threshold.json`，向后兼容) 中的校准阈值。
 
 ### Python接口
 
