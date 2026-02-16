@@ -37,12 +37,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def load_spam_dataset(cache_dir: str = None) -> pd.DataFrame:
+def load_spam_dataset(cache_dir: str = None, fallback_to_mock: bool = True) -> pd.DataFrame:
     """
     从 HuggingFace 加载 spam 数据集
     
     Args:
         cache_dir: 缓存目录
+        fallback_to_mock: 如果网络失败，是否使用模拟数据
         
     Returns:
         pd.DataFrame: 包含 content, toxic, source 列
@@ -59,28 +60,80 @@ def load_spam_dataset(cache_dir: str = None) -> pd.DataFrame:
     logger.info("加载 HuggingFace spam 数据集: reatiny/chinese-spam-10000")
     logger.info("=" * 80)
     
-    # 加载数据集
-    dataset = load_dataset('reatiny/chinese-spam-10000', cache_dir=cache_dir)
-    
-    # 转换为 DataFrame
-    # 假设数据集有 'text' 和 'label' 列
-    # label: 1 = spam (toxic), 0 = normal (safe)
-    train_data = dataset['train'].to_pandas()
-    
-    logger.info(f"原始样本数: {len(train_data)}")
-    logger.info(f"列名: {list(train_data.columns)}")
-    
-    # 映射到统一 schema
-    # 根据数据集实际列名调整
-    if 'text' in train_data.columns and 'label' in train_data.columns:
-        df_mapped = pd.DataFrame({
-            'content': train_data['text'],
-            'toxic': train_data['label'].astype(int),  # 1=spam, 0=normal
-            'source': 'HF:reatiny/chinese-spam-10000',
-            'keyword': ''  # spam 数据集无关键词
-        })
-    else:
-        raise ValueError(f"数据集列名不匹配，期望 'text' 和 'label'，实际: {list(train_data.columns)}")
+    try:
+        # 加载数据集
+        dataset = load_dataset('reatiny/chinese-spam-10000', cache_dir=cache_dir)
+        
+        # 转换为 DataFrame
+        # 假设数据集有 'text' 和 'label' 列
+        # label: 1 = spam (toxic), 0 = normal (safe)
+        train_data = dataset['train'].to_pandas()
+        
+        logger.info(f"原始样本数: {len(train_data)}")
+        logger.info(f"列名: {list(train_data.columns)}")
+        
+        # 映射到统一 schema
+        # 根据数据集实际列名调整
+        if 'text' in train_data.columns and 'label' in train_data.columns:
+            df_mapped = pd.DataFrame({
+                'content': train_data['text'],
+                'toxic': train_data['label'].astype(int),  # 1=spam, 0=normal
+                'source': 'HF:reatiny/chinese-spam-10000',
+                'keyword': ''  # spam 数据集无关键词
+            })
+        else:
+            raise ValueError(f"数据集列名不匹配，期望 'text' 和 'label'，实际: {list(train_data.columns)}")
+        
+    except Exception as e:
+        if not fallback_to_mock:
+            raise
+        
+        logger.warning(f"⚠️  HuggingFace 数据集加载失败: {e}")
+        logger.warning("使用模拟 spam 数据集作为备用")
+        
+        # 创建模拟数据集
+        mock_data = []
+        
+        # Spam samples (toxic=1)
+        spam_samples = [
+            "加微信领取优惠券",
+            "日赚1000元加QQ群",
+            "低价代购正品保证",
+            "刷单兼职月入过万",
+            "点击链接了解详情",
+            "扫码进群免费试用",
+            "私信我获取资源",
+            "特价促销限时优惠",
+        ]
+        
+        # Normal samples (toxic=0)
+        normal_samples = [
+            "今天天气真不错",
+            "这个产品质量很好",
+            "感谢大家的支持",
+            "有什么问题可以询问",
+            "欢迎交流讨论",
+            "希望对你有帮助",
+        ]
+        
+        for text in spam_samples:
+            mock_data.append({
+                'content': text,
+                'toxic': 1,
+                'source': 'Mock:spam',
+                'keyword': ''
+            })
+        
+        for text in normal_samples:
+            mock_data.append({
+                'content': text,
+                'toxic': 0,
+                'source': 'Mock:normal',
+                'keyword': ''
+            })
+        
+        df_mapped = pd.DataFrame(mock_data)
+        logger.info(f"使用模拟数据集: {len(df_mapped)} 样本")
     
     # 移除空值
     df_mapped = df_mapped.dropna(subset=['content'])
