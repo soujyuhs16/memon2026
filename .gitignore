@@ -73,3 +73,6 @@ temp/
 # Environment
 .env
 .env.local
+
+# Java / Maven build artifacts (mahjong-plugin)
+mahjong-plugin/target/
