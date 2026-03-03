@@ -1,0 +1,32 @@
+name: MahjongPlugin
+version: 1.0.0
+main: com.memon2026.mahjong.MahjongPlugin
+api-version: 1.20
+description: 广东麻将游戏 (Guangdong Mahjong Game)
+author: memon2026
+
+commands:
+  mahjong:
+    description: 广东麻将游戏命令
+    usage: |
+      /mahjong create <房间名> - 创建房间
+      /mahjong join <房间名>   - 加入房间
+      /mahjong start           - 开始游戏
+      /mahjong discard <牌>    - 出牌 (例: 1wan/1万 9tiao/9条 5bing/5饼, 或用序号)
+      /mahjong peng            - 碰牌
+      /mahjong gang            - 杠牌
+      /mahjong hu              - 胡牌
+      /mahjong pass            - 放弃碰/杠/胡
+      /mahjong show            - 显示手牌
+      /mahjong rooms           - 列出所有房间
+      /mahjong leave           - 离开房间
+    aliases: [mj]
+    permission: mahjong.play
+
+permissions:
+  mahjong.play:
+    description: 允许玩家使用麻将命令
+    default: true
+  mahjong.admin:
+    description: 允许管理员管理麻将游戏
+    default: op
