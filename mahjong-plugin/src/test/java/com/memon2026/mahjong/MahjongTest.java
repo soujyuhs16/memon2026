@@ -304,9 +304,7 @@ public class MahjongTest {
                 wan(4), wan(4), wan(4),
                 wan(5), wan(5)
         );
-        // 碰碰胡 +1，基础 1 = 2（不算清一色因为清一色已包含并取高）
-        // 实际上清一色也满足，但 calculateFan 先检查清一色
-        // 全万 = 清一色，所以是 +3
+        // 全万 = 清一色（+3）+ 基础（1）= 4番；清一色优先级高于碰碰胡
         assertEquals(4, WinChecker.calculateFan(hand, Collections.emptyList(), false));
     }
 

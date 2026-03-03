@@ -72,8 +72,10 @@ public class GamePlayer {
     }
 
     public boolean hasTile(Tile tile) { return countTile(tile) >= 1; }
-    public boolean hasThreeOfTile(Tile tile) { return countTile(tile) >= 2; } // 手中2张 + 他人弃牌1张
-    public boolean hasFourOfTile(Tile tile) { return countTile(tile) >= 3; }  // 手中3张 + 他人弃牌1张
+    /** 手中有2张相同牌，可以碰（加上弃牌那张共3张） */
+    public boolean canPeng(Tile tile) { return countTile(tile) >= 2; }
+    /** 手中有3张相同牌，可以明杠（加上弃牌那张共4张） */
+    public boolean canKong(Tile tile) { return countTile(tile) >= 3; }
 
     // ---- Display ----
 

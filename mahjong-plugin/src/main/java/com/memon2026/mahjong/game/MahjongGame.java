@@ -192,12 +192,12 @@ public class MahjongGame {
             StringBuilder hints = new StringBuilder();
 
             // 能碰？（手中有2张相同）
-            if (p.hasThreeOfTile(tile)) {
+            if (p.canPeng(tile)) {
                 canClaim = true;
                 hints.append("§a碰(§f/mj peng§a) ");
             }
             // 能杠？（手中有3张相同）
-            if (p.hasFourOfTile(tile)) {
+            if (p.canKong(tile)) {
                 canClaim = true;
                 hints.append("§6明杠(§f/mj gang§6) ");
             }
